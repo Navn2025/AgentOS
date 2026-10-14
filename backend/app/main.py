@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
-import os
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,7 +9,7 @@ from psycopg import IntegrityError, OperationalError
 from psycopg.errors import CheckViolation
 from psycopg_pool import PoolTimeout
 from . import auth, models, services as s
-from .config import DATABASE_URL, JWT_SECRET, FRONTEND_ORIGIN, PLANNER_PROVIDER, RESEARCH_PROVIDER, OPENROUTER_MODEL, GROQ_MODEL
+from .config import DATABASE_URL, JWT_SECRET, FRONTEND_ORIGIN, PLANNER_PROVIDER, RESEARCH_PROVIDER, OPENROUTER_MODEL, GROQ_MODEL, get_api_key
 from .db import migrate, pool, transaction, query
 
 @asynccontextmanager
@@ -58,9 +57,9 @@ def me(user=Depends(auth.current_user)):
 @app.get('/api/config')
 def config(user=Depends(auth.current_user)):
     return {'planner':{'provider':PLANNER_PROVIDER,'model':OPENROUTER_MODEL if PLANNER_PROVIDER=='openrouter' else GROQ_MODEL,
-                       'configured':bool(os.getenv('OPENROUTER_API_KEY' if PLANNER_PROVIDER=='openrouter' else 'GROQ_API_KEY'))},
+                       'configured':bool(get_api_key('OPENROUTER_API_KEY' if PLANNER_PROVIDER=='openrouter' else 'GROQ_API_KEY'))},
             'research':{'provider':RESEARCH_PROVIDER,'model':GROQ_MODEL if RESEARCH_PROVIDER=='groq' else OPENROUTER_MODEL,
-                        'configured':bool(os.getenv('GROQ_API_KEY' if RESEARCH_PROVIDER=='groq' else 'OPENROUTER_API_KEY'))},
+                        'configured':bool(get_api_key('GROQ_API_KEY' if RESEARCH_PROVIDER=='groq' else 'OPENROUTER_API_KEY'))},
             'mcp':'Bundled read-only Wikipedia MCP server','timezone':'Asia/Kolkata'}
 
 @app.get('/api/projects')
