@@ -2,15 +2,17 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 import os
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+import time
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from psycopg import IntegrityError, OperationalError
 from psycopg.errors import CheckViolation
 from psycopg_pool import PoolTimeout
-from . import auth, models, services as s
-from .config import DATABASE_URL, JWT_SECRET, FRONTEND_ORIGIN, PLANNER_PROVIDER, RESEARCH_PROVIDER, OPENROUTER_MODEL, GROQ_MODEL
+from . import auth, laptop, models, services as s
+from .config import DATABASE_URL, JWT_SECRET, FRONTEND_ORIGIN, PLANNER_PROVIDER, RESEARCH_PROVIDER
+from .providers import model_name
 from .db import migrate, pool, transaction, query
 
 @asynccontextmanager
@@ -57,11 +59,12 @@ def me(user=Depends(auth.current_user)):
 
 @app.get('/api/config')
 def config(user=Depends(auth.current_user)):
-    return {'planner':{'provider':PLANNER_PROVIDER,'model':OPENROUTER_MODEL if PLANNER_PROVIDER=='openrouter' else GROQ_MODEL,
+    return {'planner':{'provider':PLANNER_PROVIDER,'model':model_name('planner'),
                        'configured':bool(os.getenv('OPENROUTER_API_KEY' if PLANNER_PROVIDER=='openrouter' else 'GROQ_API_KEY'))},
-            'research':{'provider':RESEARCH_PROVIDER,'model':GROQ_MODEL if RESEARCH_PROVIDER=='groq' else OPENROUTER_MODEL,
+            'research':{'provider':RESEARCH_PROVIDER,'model':model_name('research'),
                         'configured':bool(os.getenv('GROQ_API_KEY' if RESEARCH_PROVIDER=='groq' else 'OPENROUTER_API_KEY'))},
-            'mcp':'Bundled read-only Wikipedia MCP server','timezone':'Asia/Kolkata'}
+            'mcp':'Bundled read-only Wikipedia MCP server','timezone':'Asia/Kolkata',
+            'laptop':{'gmail':laptop.gmail_configured(),'folders':list(laptop.file_roots())}}
 
 @app.get('/api/projects')
 def projects(user=Depends(auth.current_user)):
@@ -136,6 +139,25 @@ def runs(user=Depends(auth.current_user)):
 @app.get('/api/agent-runs/{record_id}')
 def run(record_id:UUID,user=Depends(auth.current_user)):
     return s.get_run(user['id'],record_id)
+
+@app.post('/api/laptop/gmail')
+def connect_gmail(data:models.GmailConnect,user=Depends(auth.current_user)):
+    return laptop.connect_gmail(data.address,data.app_password)
+
+@app.post('/api/transcribe')
+async def transcribe(request:Request,user=Depends(auth.current_user)):
+    from .speech import transcribe
+    return await transcribe(await request.body(),request.headers.get('content-type',''))
+
+@app.get('/api/agent-runs/{record_id}/wait')
+def wait_run(record_id:UUID,timeout:float=Query(25,ge=1,le=30),user=Depends(auth.current_user)):
+    """Long-poll until the run stops working, so agent mode keeps up even in a background browser tab."""
+    deadline=time.monotonic()+timeout
+    while True:
+        row=s.get_run(user['id'],record_id)
+        if row['status'] not in ('queued','planning','executing') or time.monotonic()>=deadline:
+            return row
+        time.sleep(0.4)
 
 @app.post('/api/commands',status_code=202)
 def command(data:models.CommandInput,background:BackgroundTasks,user=Depends(auth.current_user)):

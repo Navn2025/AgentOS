@@ -4,7 +4,7 @@ $agentosRoot = Split-Path -Parent $PSScriptRoot
 $agentosPython = Join-Path $agentosRoot '.venv\Scripts\python.exe'
 Push-Location -LiteralPath (Join-Path $agentosRoot 'backend')
 try {
-    foreach ($agentosCheck in @('check_services.py','check_api.py','check_agents.py','check_research.py')) {
+    foreach ($agentosCheck in @('check_services.py','check_api.py','check_agents.py','check_laptop.py','check_research.py')) {
         & $agentosPython $agentosCheck
         if ($LASTEXITCODE -ne 0) { throw "Failed: $agentosCheck" }
     }

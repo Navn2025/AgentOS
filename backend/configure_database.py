@@ -24,8 +24,8 @@ def main():
             raise SystemExit('Database has unrelated existing tables. Choose an empty database. No migration was applied.')
     values=dotenv_values(env) if env.exists() else {}
     set_key(env,'DATABASE_URL',url)
-    defaults={'JWT_SECRET':secrets.token_hex(32),'PLANNER_PROVIDER':'openrouter','RESEARCH_PROVIDER':'groq',
-        'OPENROUTER_MODEL':'nvidia/nemotron-3-super-120b-a12b:free','GROQ_MODEL':'llama-3.3-70b-versatile',
+    defaults={'JWT_SECRET':secrets.token_hex(32),'PLANNER_PROVIDER':'groq','RESEARCH_PROVIDER':'groq',
+        'OPENROUTER_MODEL':'nvidia/nemotron-3-super-120b-a12b:free','GROQ_MODEL':'qwen/qwen3.8-27b','GROQ_PLANNER_MODEL':'openai/gpt-oss-120b',
         'OPENROUTER_API_KEY':'','GROQ_API_KEY':'','FRONTEND_ORIGIN':'http://localhost:5173'}
     for key,value in defaults.items():
         if key not in values:set_key(env,key,value)

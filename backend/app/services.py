@@ -141,8 +141,11 @@ def create_run(user, data):
     with transaction() as conn:
         # Prevent competing active runs from the same user without trusting the client.
         conn.execute('SELECT id FROM users WHERE id=%s FOR UPDATE',(user,))
-        if conn.execute("SELECT 1 FROM agent_runs WHERE user_id=%s AND status IN ('queued','planning','executing','awaiting_input')",(user,)).fetchone():
+        if conn.execute("SELECT 1 FROM agent_runs WHERE user_id=%s AND status IN ('queued','planning','executing')",(user,)).fetchone():
             raise HTTPException(409,'Finish or cancel your current command first')
+        # A new command replaces an unanswered permission/choice question; nothing from it has run yet.
+        for paused in conn.execute("UPDATE agent_runs SET status='cancelled',question=NULL,finished_at=now() WHERE user_id=%s AND status='awaiting_input' RETURNING conversation_id",(user,)).fetchall():
+            message(conn,user,paused['conversation_id'],'assistant','Cancelled: a new command was given before this question was answered.')
         conversation_id = data.get('conversation_id')
         if conversation_id:
             owned(conn,'conversations',conversation_id,user)
