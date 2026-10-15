@@ -3,7 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv, dotenv_values
 
 ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(ROOT / '.env')
+# The project's .env wins over machine-wide variables (e.g. another project's GROQ_API_KEY).
+load_dotenv(ROOT / '.env', override=True)
 DATABASE_URL = os.getenv('DATABASE_URL', '')
 JWT_SECRET = os.getenv('JWT_SECRET', '')
 FRONTEND_ORIGIN = os.getenv('FRONTEND_ORIGIN', 'http://localhost:5173')

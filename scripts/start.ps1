@@ -13,21 +13,21 @@ foreach ($agentosPort in @(8000,5173)) {
     } else {
         $agentosNode = (Get-Command node.exe).Source
         $agentosVite = Join-Path $agentosRoot 'frontend\node_modules\vite\bin\vite.js'
-        $agentosProc = Start-Process -FilePath $agentosNode -ArgumentList @($agentosVite,'--host','127.0.0.1','--port','5173','--strictPort') -WorkingDirectory (Join-Path $agentosRoot 'frontend') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $agentosLogs 'frontend.log') -RedirectStandardError (Join-Path $agentosLogs 'frontend-error.log')
+        $agentosProc = Start-Process -FilePath $agentosNode -ArgumentList @("`"$agentosVite`"",'--host','127.0.0.1','--port','5173','--strictPort') -WorkingDirectory (Join-Path $agentosRoot 'frontend') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $agentosLogs 'frontend.log') -RedirectStandardError (Join-Path $agentosLogs 'frontend-error.log')
     }
     $agentosPids["$agentosPort-launcher"] = @{ Id=$agentosProc.Id; StartedTicks=$agentosProc.StartTime.ToUniversalTime().Ticks.ToString() }
 }
 if ($agentosPids.Count) {
     $agentosPidPath = Join-Path $agentosLogs 'processes.json'
     $agentosPrevious = @{}
-    if (Test-Path -LiteralPath $agentosPidPath) { $agentosPrevious = Get-Content -LiteralPath $agentosPidPath -Raw | ConvertFrom-Json -AsHashtable }
+    if (Test-Path -LiteralPath $agentosPidPath) { (Get-Content -LiteralPath $agentosPidPath -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $agentosPrevious[$_.Name] = $_.Value } }
     foreach ($agentosKey in $agentosPids.Keys) { $agentosPrevious[$agentosKey] = $agentosPids[$agentosKey] }
     $agentosPrevious | ConvertTo-Json | Set-Content -LiteralPath $agentosPidPath
 }
 for ($agentosAttempt=0; $agentosAttempt -lt 20; $agentosAttempt++) {
     try {
         $agentosHealth = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/health' -TimeoutSec 2
-        $agentosWeb = Invoke-WebRequest -Uri 'http://127.0.0.1:5173/' -TimeoutSec 2
+        $agentosWeb = Invoke-WebRequest -Uri 'http://127.0.0.1:5173/' -TimeoutSec 2 -UseBasicParsing
         if ($agentosHealth.status -eq 'ok' -and $agentosWeb.StatusCode -eq 200) {
             foreach ($agentosPort in @(8000,5173)) {
                 if ($agentosPids.ContainsKey("$agentosPort-launcher")) {

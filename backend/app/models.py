@@ -68,7 +68,12 @@ class CommandInput(BaseModel):
 
 class ResumeInput(BaseModel):
     approved: bool | None = None
-    selected_id: UUID | None = None
+    # A record UUID or a file option index; the endpoint checks it against the offered options.
+    selected_id: str | None = Field(default=None, max_length=64)
+
+class GmailConnect(BaseModel):
+    address: str = Field(min_length=5, max_length=254)
+    app_password: str = Field(min_length=16, max_length=40)
 
 class ResearchInput(BaseModel):
     project_id: UUID

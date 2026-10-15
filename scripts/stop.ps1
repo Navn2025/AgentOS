@@ -2,8 +2,8 @@ $ErrorActionPreference = 'Stop'
 $agentosRoot = Split-Path -Parent $PSScriptRoot
 $agentosPidPath = Join-Path $agentosRoot '.local\processes.json'
 if (-not (Test-Path -LiteralPath $agentosPidPath)) { Write-Host 'No script-managed processes recorded.'; exit }
-$agentosPids = Get-Content -LiteralPath $agentosPidPath -Raw | ConvertFrom-Json -AsHashtable
-foreach ($agentosRecord in $agentosPids.Values) {
+$agentosPids = (Get-Content -LiteralPath $agentosPidPath -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $_.Value }
+foreach ($agentosRecord in $agentosPids) {
     $agentosId = $agentosRecord.Id
     $agentosProc = Get-CimInstance Win32_Process -Filter "ProcessId=$agentosId" -ErrorAction SilentlyContinue
     if (-not $agentosProc) { continue }
