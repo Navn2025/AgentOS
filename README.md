@@ -34,7 +34,15 @@ OPENROUTER_API_KEY=your-openrouter-key
 GROQ_API_KEY=your-groq-key
 ```
 
-Restart the backend after changing configuration. The planner uses the dedicated **`langchain-openrouter` / `ChatOpenRouter`** integration. Research summaries use **`langchain-groq` / `ChatGroq`**.
+Saved API keys are read on the next model request; no restart is needed for key changes. Provider/model and database configuration changes still require a backend restart. The planner uses the dedicated **`langchain-openrouter` / `ChatOpenRouter`** integration. Research summaries use **`langchain-groq` / `ChatGroq`**.
+
+If editor changes are not reaching the saved file, use the hidden-input helper from the project root:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\set_api_keys.py
+```
+
+It writes to the exact backend `.env`, keeps existing values when you press Enter, and never prints the keys.
 
 ```dotenv
 PLANNER_PROVIDER=openrouter
